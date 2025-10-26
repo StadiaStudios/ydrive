@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YDrive | Local Music Storage</title>
+     <link rel="icon" type="image/x-icon" href="assets/favicon.png">
+    <!-- Load Tailwind CSS -->
+     <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics in Dark Mode */
+        .song-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .song-list::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 dark */
+            border-radius: 4px;
+        }
+        .song-list::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 dark */
+        }
+        
+        /* Dark Mode Body Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Tailwind gray-900 (Dark background) */
+            color: #d1d5db; /* Tailwind gray-300 (Light text default) */
+            padding-bottom: 5rem;
+        }
+
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #1f2937; /* Slightly lighter dark background for screen */
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+        /* Loading bar animation */
+        @keyframes slide-in-out {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-slide-in-out {
+            animation: slide-in-out 2s infinite;
+        }
+
+        /* Apply a slight shadow for depth on dark elements */
+        .dark-card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Hide the main app content until loading is complete */
+        #app {
+            display: none; 
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- --- LOADING SCREEN --- -->
+    <div id="loading-screen">
+        <!-- Placeholder for a high-contrast YDrive Logo -->
+        <img src="assets/logo.png" 
+             alt="YDrive Logo" 
+             class="w-36 h-36 rounded-2xl shadow-2xl animate-pulse">
+        <p class="mt-8 text-xl font-bold text-blue-300 tracking-wider">LOADING YDRIVE...</p>
+        <div class="mt-4 w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-400 animate-slide-in-out"></div>
+        </div>
+    </div>
+    <!-- --- END LOADING SCREEN --- -->
+
+    <div id="app" class="w-full max-w-4xl mx-auto pt-4 md:pt-6">
+        
+        <header class="text-center mb-6 px-4">
+            <!-- UPDATED: Replaced text H1 with a placeholder PNG image logo -->
+            <img src="assets/logo.png" 
+                 alt="YDrive Logo" 
+                 class="mx-auto h-12 w-auto mb-2 filter drop-shadow-lg">
+            <p class="text-gray-400 mt-1">Your personal, local music backup solution.</p>
+        </header>
+
+        <!-- Loading & Status Messages -->
+        <div id="status-message" class="mx-4 md:mx-0 hidden p-3 mb-4 text-sm rounded-lg" role="alert"></div>
+        
+        <!-- --- MAIN VIEW: File Upload & Song List --- -->
+        <div id="main-view" class="bg-gray-800 dark-card-shadow rounded-xl p-4 md:p-6 mx-4 md:mx-0">
+
+            <!-- File Upload Area (High contrast dark theme) -->
+            <div class="border-2 border-dashed border-indigo-600 p-6 rounded-lg bg-indigo-900/30 transition duration-300 hover:border-indigo-400 hover:bg-indigo-900/50">
+                <label for="music-upload" class="flex flex-col items-center cursor-pointer">
+                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4v1.581a6.388 6.388 0 00-1.554-1.282l-.63-.443a.5.5 0 00-.67.11L14.5 12.5a.5.5 0 00.1.67l.63.443a6.388 6.388 0 001.554 1.282V16m-7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <p class="mt-2 text-base text-indigo-300 font-semibold">Click to upload music files</p>
+                    <p class="text-sm text-indigo-400">MP3, WAV, OGG (Files are stored locally in your browser)</p>
+                </label>
+                <input type="file" id="music-upload" accept="audio/*" multiple class="hidden">
+            </div>
+
+            <!-- Song List Section -->
+            <div class="mt-8">
+                <!-- Text color change for dark mode -->
+                <h2 class="text-xl font-semibold text-gray-200 border-b border-gray-700 pb-2 mb-4">Your Uploaded Music (<span id="song-count">0</span>)</h2>
+                <p id="empty-message" class="text-gray-500 italic text-center py-8 hidden">No music files uploaded yet. Start uploading!</p>
+                
+                <div id="song-list" class="song-list space-y-3 max-h-96 overflow-y-auto pr-2">
+                    <!-- Song items will be injected here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- --- SETTINGS VIEW: Backup & Restore --- -->
+        <div id="settings-view" class="hidden bg-gray-800 dark-card-shadow rounded-xl p-4 md:p-6 mx-4 md:mx-0">
+            <h2 class="text-2xl font-bold text-gray-200 mb-6">Settings & Backup</h2>
+
+            <!-- Backup Section -->
+            <div class="mb-8 border-b border-gray-700 pb-6">
+                <h3 class="text-xl font-semibold text-gray-300 mb-3">Create Backup</h3>
+                <p class="text-gray-400 mb-4">Download a **.ydrive** file containing all your music data. Use this file to restore your music library on any browser/device.</p>
+                <!-- Button colors remain bright for contrast -->
+                <button id="backup-btn" class="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50" disabled>
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Local Backup (.ydrive)
+                </button>
+            </div>
+
+            <!-- Restore Section -->
+            <div>
+                <h3 class="text-xl font-semibold text-gray-300 mb-3">Restore Library</h3>
+                <p class="text-gray-400 mb-4">Select a previously downloaded YDrive backup file to restore your music.</p>
+                <label class="block">
+                    <span class="sr-only">Choose backup file</span>
+                    <input type="file" id="restore-file" accept=".ydrive" class="block w-full text-sm text-gray-300
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-lg file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-purple-900 file:text-purple-300
+                        hover:file:bg-purple-800
+                        rounded-lg border border-gray-600 p-1 bg-gray-700"
+                    />
+                </label>
+            </div>
+
+            <!-- App Version -->
+            <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-500 text-sm">
+                <p>YDrive Version <span id="app-version"></span></p>
+                <p class="mt-1">© 2024 YDrive Project</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- --- BOTTOM NAVIGATION BAR (Dark Mode) --- -->
+    <nav id="navbar" class="fixed bottom-0 left-0 right-0 h-20 bg-gray-800 border-t border-gray-700 shadow-2xl flex justify-around items-center z-50">
+        <!-- My Files Button -->
+        <button id="main-view-btn" class="flex flex-col items-center justify-center h-full w-full p-2 transition duration-200 text-indigo-400 border-t-2 border-indigo-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+            <span class="text-xs font-semibold mt-1">My Files</span>
+        </button>
+        
+        <!-- Settings Button -->
+        <button id="settings-view-btn" class="flex flex-col items-center justify-center h-full w-full p-2 transition duration-200 text-gray-400 border-t-2 border-transparent hover:text-indigo-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.248 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="text-xs font-semibold mt-1">Settings</span>
+        </button>
+    </nav>
+    <!-- --- END BOTTOM NAVIGATION BAR --- -->
+
+    <!-- --- CUSTOM CONFIRM MODAL (Replaces window.confirm/prompt) --- -->
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[1001] flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-xl max-w-sm w-full dark-card-shadow p-6 transform transition-all duration-300 scale-100">
+            <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.318 18c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Confirmation Required
+            </h3>
+            <p id="confirm-message" class="text-gray-300 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-btn" class="py-2 px-4 rounded-lg text-sm font-semibold text-gray-300 bg-gray-700 hover:bg-gray-600 transition duration-150">Cancel</button>
+                <button id="confirm-action-btn" class="py-2 px-4 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition duration-150">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <!-- --- END CUSTOM CONFIRM MODAL --- -->
+
+    <script>
+        // --- IndexedDB Configuration and Helpers ---
+        const DB_NAME = 'YDriveDB';
+        const STORE_NAME = 'music_files';
+        const APP_VERSION = '1.0.0'; // Application version
+        const version = 1;
+
+        let db;
+        let currentView = 'main-view'; // Tracks the active view
+
+        /**
+         * Converts ArrayBuffer to Base64 string for JSON serialization (backup).
+         * @param {ArrayBuffer} buffer 
+         * @returns {string} Base64 string.
+         */
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        /**
+         * Converts Base64 string back to ArrayBuffer for IndexedDB storage (restore).
+         * @param {string} base64 
+         * @returns {ArrayBuffer}
+         */
+        function base64ToArrayBuffer(base64) {
+            const binary_string = atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // --- UI Utility Functions ---
+
+        /**
+         * Displays a status message to the user, adapting colors for dark mode.
+         * @param {string} message The message to display.
+         * @param {string} type 'success', 'error', or 'info'.
+         */
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.className = 'mx-4 md:mx-0 p-3 mb-4 text-sm rounded-lg transition-opacity duration-300';
+            
+            // Set colors based on type for dark mode background
+            let colorClasses = '';
+            if (type === 'success') {
+                colorClasses = 'bg-green-900 text-green-300'; // Dark green background, light green text
+            } else if (type === 'error') {
+                colorClasses = 'bg-red-900 text-red-300'; // Dark red background, light red text
+            } else { // info
+                colorClasses = 'bg-blue-900 text-blue-300'; // Dark blue background, light blue text
+            }
+            statusEl.className += ` ${colorClasses} block opacity-100`;
+
+            // Hide after 5 seconds
+            setTimeout(() => {
+                statusEl.classList.remove('block', 'opacity-100');
+                statusEl.classList.add('hidden', 'opacity-0');
+            }, 5000);
+        }
+
+        function setBackupButtonState(count) {
+            const backupBtn = document.getElementById('backup-btn');
+            if (!backupBtn) return; // Guard for view switching
+            
+            backupBtn.disabled = count === 0;
+            // Update button text to reflect the new file extension
+            backupBtn.textContent = count > 0 ? `Download Local Backup (.ydrive) (${count} files)` : 'Download Local Backup (Empty)';
+        }
+        
+        /**
+         * Toggles between the main file list and settings view.
+         * @param {string} viewId 'main-view' or 'settings-view'
+         */
+        function switchView(viewId) {
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('settings-view').classList.add('hidden');
+            
+            // Show the requested view
+            const targetView = document.getElementById(viewId);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                currentView = viewId;
+            }
+
+            // Update navbar active state (Dark Mode Colors)
+            document.querySelectorAll('#navbar button').forEach(btn => {
+                btn.classList.remove('text-indigo-400', 'border-indigo-400');
+                btn.classList.add('text-gray-400', 'border-transparent');
+            });
+            
+            const activeBtn = document.getElementById(`${viewId}-btn`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-400', 'border-transparent');
+                activeBtn.classList.add('text-indigo-400', 'border-indigo-400');
+            }
+        }
+
+
+        // --- IndexedDB Core Functions ---
+
+        /**
+         * Initializes and returns the IndexedDB connection.
+         * @returns {Promise<IDBDatabase>}
+         */
+        async function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, version);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('IndexedDB error:', event.target.error);
+                    showStatus('Error opening local database. Please check console.', 'error');
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Puts a single file into the IndexedDB store.
+         * @param {object} fileObj - { name, type, data: ArrayBuffer }
+         * @returns {Promise<number>} The ID of the added object.
+         */
+        function addFileToDB(fileObj) {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                
+                // IndexedDB automatically serializes/deserializes ArrayBuffers
+                const request = store.add(fileObj);
+                let newId;
+
+                request.onsuccess = () => {
+                    newId = request.result;
+                };
+
+                // Wait for the entire transaction to finish (commit)
+                transaction.oncomplete = () => {
+                    resolve(newId);
+                };
+
+                transaction.onerror = (event) => {
+                    console.error('Transaction error (addFileToDB):', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Retrieves all files from the database.
+         * @returns {Promise<Array<Object>>}
+         */
+        function getAllFilesFromDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+
+                request.onsuccess = (event) => resolve(event.target.result);
+                request.onerror = (event) => {
+                    console.error('Error getting all files:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Deletes a file by its ID.
+         * @param {number} id 
+         * @returns {Promise<void>}
+         */
+        function deleteFileFromDB(id) {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.delete(id);
+
+                // Wait for transaction complete
+                transaction.oncomplete = () => resolve();
+                
+                // Transaction/Request error handling
+                transaction.onerror = (event) => reject(event.target.error);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        /**
+         * Clears all objects from the music_files store.
+         * @returns {Promise<void>}
+         */
+        function clearDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+
+                // Wait for transaction complete
+                transaction.oncomplete = () => resolve();
+                
+                // Transaction/Request error handling
+                transaction.onerror = (event) => reject(event.target.error);
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+
+        // --- Application Logic ---
+
+        /**
+         * Handles file upload, storing it in IndexedDB, and refreshing the list.
+         */
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+
+            showStatus(`Processing ${files.length} file(s)...`, 'info');
+            let successCount = 0;
+
+            for (const file of files) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    // Await addFileToDB, which now waits for transaction commit
+                    await addFileToDB({ 
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: arrayBuffer 
+                    });
+                    successCount++;
+                } catch (e) {
+                    console.error(`Failed to upload ${file.name}:`, e);
+                    showStatus(`Error uploading ${file.name}. See console.`, 'error');
+                }
+            }
+
+            if (successCount > 0) {
+                showStatus(`Successfully uploaded ${successCount} file(s) to YDrive!`, 'success');
+                // The transaction is guaranteed to be committed here, so renderSongs should succeed
+                await renderSongs();
+            }
+            // Clear input so same file can be uploaded again if needed
+            event.target.value = null; 
+        }
+
+        /**
+         * Initiates the download of a song from IndexedDB.
+         * @param {string} name 
+         * @param {string} type 
+         * @param {ArrayBuffer} data 
+         */
+        function downloadFile(name, type, data) {
+            try {
+                // Create a Blob from the ArrayBuffer
+                const blob = new Blob([data], { type: type });
+                // Create a temporary URL for the blob
+                const url = URL.createObjectURL(blob);
+                
+                // Create a link element to trigger the download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // Clean up the URL
+                URL.revokeObjectURL(url);
+                showStatus(`Download started for ${name}`, 'info');
+
+            } catch(e) {
+                console.error("Download failed:", e);
+                showStatus(`Failed to start download for ${name}.`, 'error');
+            }
+        }
+
+        /**
+         * Generates a single JSON backup file containing all songs.
+         */
+        async function generateBackup() {
+            const backupBtn = document.getElementById('backup-btn');
+            const originalText = backupBtn.textContent;
+            backupBtn.disabled = true;
+            backupBtn.textContent = 'Preparing Backup...';
+
+            try {
+                const allFiles = await getAllFilesFromDB();
+                
+                if (allFiles.length === 0) {
+                    showStatus('The drive is empty, no backup generated.', 'info');
+                    return;
+                }
+
+                // Convert ArrayBuffer data to Base64 string for JSON serialization
+                const backupData = allFiles.map(file => ({
+                    id: file.id, // Include original ID for tracking, though it's optional
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    data_b64: arrayBufferToBase64(file.data)
+                }));
+
+                const jsonString = JSON.stringify(backupData, null, 2);
+                
+                // Download the JSON file
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                // Change file extension to .ydrive
+                a.download = 'ydrive_backup.ydrive';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                URL.revokeObjectURL(url);
+
+                showStatus(`Successfully generated backup with ${allFiles.length} files.`, 'success');
+
+            } catch (e) {
+                console.error('Backup generation failed:', e);
+                showStatus('Failed to generate backup. See console.', 'error');
+            } finally {
+                setBackupButtonState(allFiles.length); // Restore original text/state
+            }
+        }
+
+        /**
+         * Restores music files from a user-provided JSON backup file.
+         */
+        async function restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showStatus('Reading backup file...', 'info');
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const jsonString = e.target.result;
+                    const backupData = JSON.parse(jsonString);
+
+                    if (!Array.isArray(backupData)) {
+                        throw new Error('Invalid backup file structure.');
+                    }
+
+                    // Confirm before proceeding
+                    if (await confirmAction(`This will add ${backupData.length} file(s) to your YDrive. Do you want to proceed with the restoration?`)) {
+                        
+                        showStatus(`Restoring ${backupData.length} files... This may take a moment.`, 'info');
+                        let successCount = 0;
+
+                        for (const item of backupData) {
+                            // Convert Base64 string back to ArrayBuffer
+                            const arrayBuffer = base64ToArrayBuffer(item.data_b64);
+                            
+                            // Prepare object for IndexedDB
+                            const fileObj = {
+                                name: item.name,
+                                type: item.type,
+                                size: item.size,
+                                data: arrayBuffer 
+                            };
+                            
+                            // Add to DB. ID will be auto-incremented, ignoring the backup's old ID
+                            await addFileToDB(fileObj);
+                            successCount++;
+                        }
+                        
+                        showStatus(`Restore successful! Added ${successCount} file(s) to YDrive.`, 'success');
+                        await renderSongs();
+                    } else {
+                        showStatus('Restore cancelled by user.', 'info');
+                    }
+
+                } catch (e) {
+                    console.error('Restore failed:', e);
+                    showStatus('Restore failed: Invalid or corrupted backup file.', 'error');
+                } finally {
+                    // Clear input
+                    event.target.value = null;
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * CUSTOM MODAL REPLACEMENT for window.confirm/prompt.
+         * @param {string} message The message to display in the confirmation box.
+         * @returns {Promise<boolean>} Resolves to true if confirmed, false otherwise.
+         */
+        function confirmAction(message) {
+            return new Promise(resolve => {
+                const modal = document.getElementById('custom-confirm-modal');
+                const messageEl = document.getElementById('confirm-message');
+                const confirmBtn = document.getElementById('confirm-action-btn');
+                const cancelBtn = document.getElementById('cancel-btn');
+
+                // Set message and display modal
+                messageEl.textContent = message;
+                modal.classList.remove('hidden');
+
+                const cleanUpAndResolve = (result) => {
+                    modal.classList.add('hidden');
+                    // Important: Remove listeners to prevent execution on subsequent confirmations
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    resolve(result);
+                };
+
+                const handleConfirm = () => cleanUpAndResolve(true);
+                const handleCancel = () => cleanUpAndResolve(false);
+
+                // Attach new listeners
+                confirmBtn.addEventListener('click', handleConfirm);
+                cancelBtn.addEventListener('click', handleCancel);
+            });
+        }
+        
+
+        // --- UI Rendering ---
+
+        /**
+         * Renders the list of songs stored in IndexedDB.
+         */
+        async function renderSongs() {
+            const listEl = document.getElementById('song-list');
+            const songCountEl = document.getElementById('song-count');
+            const emptyMessageEl = document.getElementById('empty-message');
+            listEl.innerHTML = '';
+            
+            try {
+                const songs = await getAllFilesFromDB();
+                console.log(`[YDRIVE] Retrieved ${songs.length} songs from IndexedDB.`);
+                songCountEl.textContent = songs.length;
+                setBackupButtonState(songs.length);
+
+                if (!emptyMessageEl) {
+                    console.error("Empty message element not found.");
+                    return; 
+                }
+
+                if (songs.length === 0) {
+                    // Show the message using Tailwind class list
+                    emptyMessageEl.classList.remove('hidden');
+                    return;
+                }
+                
+                // Hide the message using Tailwind class list
+                emptyMessageEl.classList.add('hidden');
+
+                songs.forEach(song => {
+                    const listItem = document.createElement('div');
+                    // Dark Mode list item classes
+                    listItem.className = 'flex items-center justify-between p-3 bg-gray-700 rounded-lg shadow-sm hover:bg-gray-600 transition duration-150';
+                    
+                    // File Icon and Name
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'flex items-center min-w-0';
+                    // Convert size from bytes to MB and round up to the nearest integer
+                    const sizeMB = Math.ceil(song.size / (1024 * 1024)); 
+                    nameEl.innerHTML = `
+                        <svg class="w-6 h-6 text-indigo-400 flex-shrink-0 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v14m-12-14v14"></path></svg>
+                        <!-- Text color change for dark mode -->
+                        <span class="truncate text-gray-200 font-medium">${song.name}</span>
+                        <span class="text-xs text-gray-400 ml-2">(${sizeMB}MB)</span>
+                    `;
+
+                    // Actions (Download & Delete)
+                    const actionsEl = document.createElement('div');
+                    actionsEl.className = 'flex space-x-2 flex-shrink-0';
+                    
+                    const downloadBtn = document.createElement('button');
+                    // Use brighter colors for buttons
+                    downloadBtn.className = 'p-2 rounded-full bg-indigo-500 text-white hover:bg-indigo-600 transition duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50';
+                    downloadBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>';
+                    downloadBtn.title = `Download ${song.name}`;
+                    downloadBtn.onclick = () => downloadFile(song.name, song.type, song.data);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-opacity-50';
+                    deleteBtn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
+                    deleteBtn.title = `Delete ${song.name}`;
+                    deleteBtn.onclick = async () => {
+                        // Use the new custom modal for confirmation
+                        if (await confirmAction(`Are you sure you want to permanently delete '${song.name}' from your local YDrive? This cannot be undone.`)) {
+                            await deleteFileFromDB(song.id);
+                            showStatus(`Deleted '${song.name}'.`, 'info');
+                            renderSongs(); // Re-render the list
+                        }
+                    };
+
+                    actionsEl.appendChild(downloadBtn);
+                    actionsEl.appendChild(deleteBtn);
+
+                    listItem.appendChild(nameEl);
+                    listItem.appendChild(actionsEl);
+                    listEl.appendChild(listItem);
+                });
+
+            } catch (e) {
+                console.error("Error rendering songs:", e);
+                showStatus('Could not load song list from local storage.', 'error');
+            }
+        }
+
+        // --- Initialization and Event Listeners ---
+
+        window.onload = async () => {
+            const loadingScreen = document.getElementById('loading-screen');
+            const app = document.getElementById('app');
+            
+            // Check for IndexedDB support
+            if (!window.indexedDB) {
+                showStatus("Your browser does not support IndexedDB. Local storage functionality is unavailable.", 'error');
+                // Hide loading screen and show app content even if db fails
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => loadingScreen.style.display = 'none', 500);
+                app.style.display = 'block';
+                return;
+            }
+
+            try {
+                await openDB();
+                await renderSongs();
+                
+                // Initialize view state: show the main view and set the active tab
+                switchView('main-view');
+
+                // Set app version in settings
+                document.getElementById('app-version').textContent = APP_VERSION;
+
+                showStatus('YDrive is ready. Database loaded.', 'success'); 
+            } catch (e) {
+                // Error already handled in openDB, just ensuring startup failure is noted
+                showStatus('Failed to initialize application.', 'error');
+            } finally {
+                // Hide loading screen and show main app after initialization
+                loadingScreen.style.opacity = '0';
+                // Wait for fade-out transition (0.5s) before setting display: none
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    app.style.display = 'block';
+                }, 500); 
+            }
+        };
+
+        // Event listeners for file and backup/restore operations
+        document.getElementById('music-upload').addEventListener('change', handleFileUpload);
+        document.getElementById('backup-btn').addEventListener('click', generateBackup);
+        document.getElementById('restore-file').addEventListener('change', restoreBackup);
+        
+        // Event listeners for navigation
+        document.getElementById('main-view-btn').addEventListener('click', () => switchView('main-view'));
+        document.getElementById('settings-view-btn').addEventListener('click', () => switchView('settings-view'));
+        
+    </script>
+</body>
+</html>
