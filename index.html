@@ -26,7 +26,12 @@
             font-family: 'Inter', sans-serif;
             background-color: #111827; /* Tailwind gray-900 (Dark background) */
             color: #d1d5db; /* Tailwind gray-300 (Light text default) */
-            padding-bottom: 5rem;
+            /* Removed bottom padding as the navbar is fixed */
+        }
+        
+        /* Apply a slight shadow for depth on dark elements that need to stand out */
+        .full-width-section-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
         }
 
         /* Loading Screen Styles */
@@ -54,11 +59,6 @@
             animation: slide-in-out 2s infinite;
         }
 
-        /* Apply a slight shadow for depth on dark elements */
-        .dark-card-shadow {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-        }
-
         /* Hide the main app content until loading is complete */
         #app {
             display: none; 
@@ -80,80 +80,89 @@
     </div>
     <!-- --- END LOADING SCREEN --- -->
 
-    <div id="app" class="w-full max-w-4xl mx-auto pt-4 md:pt-6">
+    <!-- Removed max-w-4xl mx-auto to enable full-width layout -->
+    <div id="app" class="w-full">
         
-        <header class="text-center mb-6 px-4">
+        <header class="text-center py-6 md:py-10 bg-gray-800 full-width-section-shadow mb-4">
             <!-- UPDATED: Replaced text H1 with a placeholder PNG image logo -->
             <img src="assets/logo.png" 
                  alt="YDrive Logo" 
                  class="mx-auto h-12 w-auto mb-2 filter drop-shadow-lg">
-            <p class="text-gray-400 mt-1">Your personal, local music backup solution.</p>
+            <p class="text-gray-400 mt-1 px-4">Your personal, local music backup solution.</p>
         </header>
 
-        <!-- Loading & Status Messages -->
-        <div id="status-message" class="mx-4 md:mx-0 hidden p-3 mb-4 text-sm rounded-lg" role="alert"></div>
+        <!-- Loading & Status Messages (Centered max width for readability) -->
+        <div class="max-w-4xl mx-auto px-4">
+            <div id="status-message" class="hidden p-3 mb-4 text-sm rounded-lg" role="alert"></div>
+        </div>
         
         <!-- --- MAIN VIEW: File Upload & Song List --- -->
-        <div id="main-view" class="bg-gray-800 dark-card-shadow rounded-xl p-4 md:p-6 mx-4 md:mx-0">
+        <!-- Content now spans full width, but internal padding maintains readability -->
+        <div id="main-view" class="p-4 md:p-6 pb-24 md:pb-20"> 
+            <div class="max-w-4xl mx-auto">
 
-            <!-- File Upload Area (High contrast dark theme) -->
-            <div class="border-2 border-dashed border-indigo-600 p-6 rounded-lg bg-indigo-900/30 transition duration-300 hover:border-indigo-400 hover:bg-indigo-900/50">
-                <label for="music-upload" class="flex flex-col items-center cursor-pointer">
-                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4v1.581a6.388 6.388 0 00-1.554-1.282l-.63-.443a.5.5 0 00-.67.11L14.5 12.5a.5.5 0 00.1.67l.63.443a6.388 6.388 0 001.554 1.282V16m-7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                    <p class="mt-2 text-base text-indigo-300 font-semibold">Click to upload music files</p>
-                    <p class="text-sm text-indigo-400">MP3, WAV, OGG (Files are stored locally in your browser)</p>
-                </label>
-                <input type="file" id="music-upload" accept="audio/*" multiple class="hidden">
-            </div>
+                <!-- File Upload Area (High contrast dark theme) -->
+                <div class="border-2 border-dashed border-indigo-600 p-6 rounded-xl bg-indigo-900/30 transition duration-300 hover:border-indigo-400 hover:bg-indigo-900/50 full-width-section-shadow">
+                    <label for="music-upload" class="flex flex-col items-center cursor-pointer">
+                        <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 014 4v1.581a6.388 6.388 0 00-1.554-1.282l-.63-.443a.5.5 0 00-.67.11L14.5 12.5a.5.5 0 00.1.67l.63.443a6.388 6.388 0 001.554 1.282V16m-7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                        <p class="mt-2 text-base text-indigo-300 font-semibold">Click to upload music files</p>
+                        <p class="text-sm text-indigo-400">MP3, WAV, OGG (Files are stored locally in your browser)</p>
+                    </label>
+                    <input type="file" id="music-upload" accept="audio/*" multiple class="hidden">
+                </div>
 
-            <!-- Song List Section -->
-            <div class="mt-8">
-                <!-- Text color change for dark mode -->
-                <h2 class="text-xl font-semibold text-gray-200 border-b border-gray-700 pb-2 mb-4">Your Uploaded Music (<span id="song-count">0</span>)</h2>
-                <p id="empty-message" class="text-gray-500 italic text-center py-8 hidden">No music files uploaded yet. Start uploading!</p>
-                
-                <div id="song-list" class="song-list space-y-3 max-h-96 overflow-y-auto pr-2">
-                    <!-- Song items will be injected here -->
+                <!-- Song List Section -->
+                <div class="mt-8 p-4 md:p-6 bg-gray-800 rounded-xl full-width-section-shadow">
+                    <!-- Text color change for dark mode -->
+                    <h2 class="text-xl font-semibold text-gray-200 border-b border-gray-700 pb-2 mb-4">Your Uploaded Music (<span id="song-count">0</span>)</h2>
+                    <p id="empty-message" class="text-gray-500 italic text-center py-8 hidden">No music files uploaded yet. Start uploading!</p>
+                    
+                    <div id="song-list" class="song-list space-y-3 max-h-96 overflow-y-auto pr-2">
+                        <!-- Song items will be injected here -->
+                    </div>
                 </div>
             </div>
         </div>
         
         <!-- --- SETTINGS VIEW: Backup & Restore --- -->
-        <div id="settings-view" class="hidden bg-gray-800 dark-card-shadow rounded-xl p-4 md:p-6 mx-4 md:mx-0">
-            <h2 class="text-2xl font-bold text-gray-200 mb-6">Settings & Backup</h2>
+        <!-- Content now spans full width, but internal padding maintains readability -->
+        <div id="settings-view" class="hidden p-4 md:p-6 pb-24 md:pb-20">
+            <div class="max-w-4xl mx-auto p-4 md:p-6 bg-gray-800 rounded-xl full-width-section-shadow">
+                <h2 class="text-2xl font-bold text-gray-200 mb-6">Settings & Backup</h2>
 
-            <!-- Backup Section -->
-            <div class="mb-8 border-b border-gray-700 pb-6">
-                <h3 class="text-xl font-semibold text-gray-300 mb-3">Create Backup</h3>
-                <p class="text-gray-400 mb-4">Download a **.ydrive** file containing all your music data. Use this file to restore your music library on any browser/device.</p>
-                <!-- Button colors remain bright for contrast -->
-                <button id="backup-btn" class="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50" disabled>
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download Local Backup (.ydrive)
-                </button>
-            </div>
+                <!-- Backup Section -->
+                <div class="mb-8 border-b border-gray-700 pb-6">
+                    <h3 class="text-xl font-semibold text-gray-300 mb-3">Create Backup</h3>
+                    <p class="text-gray-400 mb-4">Download a **.ydrive** file containing all your music data. Use this file to restore your music library on any browser/device.</p>
+                    <!-- Button colors remain bright for contrast -->
+                    <button id="backup-btn" class="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 disabled:opacity-50" disabled>
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download Local Backup (.ydrive)
+                    </button>
+                </div>
 
-            <!-- Restore Section -->
-            <div>
-                <h3 class="text-xl font-semibold text-gray-300 mb-3">Restore Library</h3>
-                <p class="text-gray-400 mb-4">Select a previously downloaded YDrive backup file to restore your music.</p>
-                <label class="block">
-                    <span class="sr-only">Choose backup file</span>
-                    <input type="file" id="restore-file" accept=".ydrive" class="block w-full text-sm text-gray-300
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-lg file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-purple-900 file:text-purple-300
-                        hover:file:bg-purple-800
-                        rounded-lg border border-gray-600 p-1 bg-gray-700"
-                    />
-                </label>
-            </div>
+                <!-- Restore Section -->
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-300 mb-3">Restore Library</h3>
+                    <p class="text-gray-400 mb-4">Select a previously downloaded YDrive backup file to restore your music.</p>
+                    <label class="block">
+                        <span class="sr-only">Choose backup file</span>
+                        <input type="file" id="restore-file" accept=".ydrive" class="block w-full text-sm text-gray-300
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-purple-900 file:text-purple-300
+                            hover:file:bg-purple-800
+                            rounded-lg border border-gray-600 p-1 bg-gray-700"
+                        />
+                    </label>
+                </div>
 
-            <!-- App Version -->
-            <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-500 text-sm">
-                <p>YDrive Version <span id="app-version"></span></p>
-                <p class="mt-1">© 2024 YDrive Project</p>
+                <!-- App Version -->
+                <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-500 text-sm">
+                    <p>YDrive Version <span id="app-version"></span></p>
+                    <p class="mt-1">© 2024 YDrive Project</p>
+                </div>
             </div>
         </div>
 
@@ -177,7 +186,7 @@
 
     <!-- --- CUSTOM CONFIRM MODAL (Replaces window.confirm/prompt) --- -->
     <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[1001] flex items-center justify-center p-4">
-        <div class="bg-gray-800 rounded-xl max-w-sm w-full dark-card-shadow p-6 transform transition-all duration-300 scale-100">
+        <div class="bg-gray-800 rounded-xl max-w-sm w-full full-width-section-shadow p-6 transform transition-all duration-300 scale-100">
             <h3 class="text-xl font-bold text-red-400 mb-4 flex items-center">
                 <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.318 18c-.77 1.333.192 3 1.732 3z"></path></svg>
                 Confirmation Required
@@ -241,7 +250,7 @@
         function showStatus(message, type = 'info') {
             const statusEl = document.getElementById('status-message');
             statusEl.textContent = message;
-            statusEl.className = 'mx-4 md:mx-0 p-3 mb-4 text-sm rounded-lg transition-opacity duration-300';
+            statusEl.className = 'p-3 mb-4 text-sm rounded-lg transition-opacity duration-300';
             
             // Set colors based on type for dark mode background
             let colorClasses = '';
